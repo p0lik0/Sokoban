@@ -1,6 +1,7 @@
 package Modele;
 
 import Global.Configuration;
+import Modele.IADijkstra.Noeud;
 import Structures.Sequence;
 import Structures.FAPListe;
 
@@ -19,7 +20,6 @@ public class IADijkstra extends IA {
     }
 
     class Noeud implements Comparable<Noeud> {
-
         int l, c;
         int distance;
         Noeud prec;
@@ -34,9 +34,33 @@ public class IADijkstra extends IA {
             else
                 distance = p.distance + 1;
         }
-
         @Override
         public int compareTo(Noeud n) {
+            // return this.distance - n.distance;
+            return 1;
+        }
+    }
+
+        class Noeud2 implements Comparable<Noeud2> {
+        int l, c;
+        int l2, c2;
+        int distance;
+        Noeud2 prec;
+
+        Noeud2(int l, int c, int l2, int c2, Noeud2 p) {
+            this.l = l;
+            this.c = c;
+            this.l2 = l2;
+            this.c2 = c2;
+            this.prec = p;
+
+            if (p == null)
+                distance = 0;
+            else
+                distance = p.distance + 1;
+        }
+        @Override
+        public int compareTo(Noeud2 n) {
             // return this.distance - n.distance;
             return 1;
         }
@@ -79,41 +103,16 @@ public class IADijkstra extends IA {
                 // System.out.println("objectif : "+ n.l + " " + n.c);
                 boolean mauvaisChemin = false;
                 Sequence<Coup> resultat = Configuration.nouvelleSequence();
-
                 Niveau copie = niveau.clone();
+                Niveau copie2 = niveau.clone();
 
+                //trouver la configuration initiale pour effectuer les deplacement calculés
                 while (objectif != null && objectif.prec != null) {
-
-                    int dL = objectif.l - objectif.prec.l;
-                    int dC = objectif.c - objectif.prec.c;
-
-                    // позиция куда должен прийти pousseur
-                    int pousseurL = objectif.prec.l - dL;
-                    int pousseurC = objectif.prec.c - dC;
-
-                    // 1. найти путь pousseur
-                    Sequence<Coup> cheminP = cheminPousseur(copie, pousseurL, pousseurC);
-
-                    if (cheminP == null) {
-                        mauvaisChemin = true;
-                        break;
-                    }
-
-                    // 2. добавить путь pousseur
-                    while (!cheminP.estVide()) {
-                        resultat.insereQueue(cheminP.extraitTete());
-                    }
-
-                    // 3. сделать push
-                    Coup push = copie.deplace(dL, dC);
-                    if (push == null) {
-                        mauvaisChemin = true;
-                        break;
-                    }
-
-                    resultat.insereQueue(push);
-
-                    objectif = objectif.prec;
+                    int startPositionPousseurL=-1;
+                    int startPositionPousseurC=-1;
+                    ajouterDeplacementsTrouvesCaisse(copie, objectif.prec, objectif, resultat, startPositionPousseurL, startPositionPousseurC);
+                    
+                    cheminPousseur(copie2, startPositionPousseurL, startPositionPousseurC, caisseL, caisseC, resultat);
                 }
                 if(mauvaisChemin){
                     System.out.println("Le chemin n'était pas bon, on continue de chercher !");
@@ -124,25 +123,25 @@ public class IADijkstra extends IA {
             System.out.println("On traite : ("+n.l+","+n.c+")");
 
             System.out.print("Ajoutés : ");
-            if(copieSansCaisseEtPousseur.estOccupable(n.l-1, n.c) && visites[n.l+1][n.c]==false){
+            if(n.l+1<lignes && copieSansCaisseEtPousseur.estOccupable(n.l-1, n.c) && visites[n.l+1][n.c]==false){
                 ajouteVoisin(file, n, n.l + 1, n.c);
                 System.out.print((n.l+1) + " "+ n.c + ";  ");
                 visites[n.l+1][n.c]=true;
             }
             // else System.out.print((n.l-1) + " "+ n.c + " n est pas occupble\n");
-            if(copieSansCaisseEtPousseur.estOccupable(n.l+1, n.c) && visites[n.l-1][n.c]==false){
+            if(n.l-1>=0 && copieSansCaisseEtPousseur.estOccupable(n.l+1, n.c) && visites[n.l-1][n.c]==false){
                 ajouteVoisin(file, n, n.l - 1, n.c);
                 System.out.print((n.l-1) + " "+ n.c + ";  ");
                 visites[n.l-1][n.c]=true;
             }
             // else System.out.print((n.l+1) + " "+ n.c + " n est pas occupble\n");
-            if(copieSansCaisseEtPousseur.estOccupable(n.l, n.c-1) && visites[n.l][n.c+1]==false){
+            if(n.c+1<colonnes && copieSansCaisseEtPousseur.estOccupable(n.l, n.c-1) && visites[n.l][n.c+1]==false){
                 ajouteVoisin(file, n, n.l, n.c + 1);
                 System.out.print((n.l) + " "+ (n.c+1) + ";  ");
                 visites[n.l][n.c+1]= true;
             }
             // else System.out.print((n.l) + " "+ (n.c-1) + " n est pas occupble\n");
-            if(copieSansCaisseEtPousseur.estOccupable(n.l, n.c+1) && visites[n.l][n.c-1]==false){
+            if(n.c-1>=0 && copieSansCaisseEtPousseur.estOccupable(n.l, n.c+1) && visites[n.l][n.c-1]==false){
                 ajouteVoisin(file, n, n.l, n.c-1);
                 System.out.println((n.l) + " "+ (n.c-1) + ";  ");
                 visites[n.l][n.c-1]=true;
@@ -166,64 +165,124 @@ public class IADijkstra extends IA {
         }
     }
 
-    Sequence<Coup> cheminPousseur(Niveau copie, int cibleL, int cibleC) {
+    void ajouterDeplacementsTrouvesCaisse(Niveau copie, Noeud nP, Noeud n, Sequence<Coup> sc, int startl, int startc){
+        if(nP.prec!=null){
+            startl = nP.prec.l>nP.l ? nP.prec.l+1 : (nP.prec.l<nP.l ? nP.prec.l-1 : startl);
+            startc = nP.prec.c>nP.c ? nP.prec.c+1 : (nP.prec.c<nP.c ? nP.prec.c-1 : startc);
+            ajouterDeplacementsTrouvesCaisse(copie, nP.prec, nP, sc, startl, startc);
+        }
+        Coup cp = copie.deplace(n.l - nP.l, n.c - nP.c);
+        sc.insereQueue(cp);
+    }
+
+    void ajouterDeplacementsTrouvesPousseur(Niveau copie, Noeud2 nP, Noeud2 n, Sequence<Coup> sc){
+        if(nP.prec!=null){
+            ajouterDeplacementsTrouvesPousseur(copie, nP.prec, nP, sc);
+        }
+        Coup cp = copie.deplace(n.l - nP.l, n.c - nP.c);
+        sc.insereQueue(cp);
+    }
+
+    Sequence<Coup> cheminPousseur(Niveau copie, int ciblePousseurL, int ciblePousseurC, int cibleCaisseL, int cibleCaisseC, Sequence<Coup> chemin) {
         boolean[][] visite = new boolean[lignes][colonnes];
-        FAPListe<Noeud> file = new FAPListe<>();
+        FAPListe<Noeud2> file = new FAPListe<>();
+        System.out.println("caisseL et C: "+caisseL + " " + caisseC);
 
-        file.insere(new Noeud(copie.lignePousseur(), copie.colonnePousseur(), null));
-
-        Noeud objectif = null;
+        file.insere(new Noeud2(copie.lignePousseur(), copie.colonnePousseur(), caisseL, caisseC, null));
+        Noeud2 objectif = null;
 
         while (!file.estVide()) {
 
-            Noeud n = file.extrait();
+            Noeud2 n = file.extrait();
+            System.out.println("Extrait :" + n.l +" "+ n.c + " & " + (n.l2) + " " + n.c2 + ";  ");
 
             if (visite[n.l][n.c])
                 continue;
 
             visite[n.l][n.c] = true;
 
-            if (n.l == cibleL && n.c == cibleC) {
+            if (n.l==ciblePousseurL && n.c==ciblePousseurC && n.l2==cibleCaisseL && n.c2==cibleCaisseC) {
                 objectif = n;
                 break;
             }
-
-            ajouteVoisinPousseur(copie, file, n, n.l + 1, n.c);
-            ajouteVoisinPousseur(copie, file, n, n.l - 1, n.c);
-            ajouteVoisinPousseur(copie, file, n, n.l, n.c + 1);
-            ajouteVoisinPousseur(copie, file, n, n.l, n.c - 1);
+            System.out.print("Ajoutés : ");
+            System.out.print("(n.l+1) : "+((n.l+1)<lignes));
+            if((n.l+1)<lignes && (copieSansCaisseEtPousseur.estOccupable(n.l + 1, n.c) || copieSansCaisseEtPousseur.aCaisse(n.l+1, n.c))){
+                ajouteVoisinPousseur(copieSansCaisseEtPousseur, file, n, n.l + 1, n.c, n.l2, n.c2, 2);
+                System.out.println((n.l+1) + " " + n.c + " & " +n.l2 + " " +n.c2 + " (caisse non bougé)");
+            }
+            if((n.l-1)>=0 && (copieSansCaisseEtPousseur.estOccupable(n.l - 1, n.c)  || copieSansCaisseEtPousseur.aCaisse(n.l-1, n.c))){
+                ajouteVoisinPousseur(copieSansCaisseEtPousseur, file, n, n.l - 1, n.c, n.l2, n.c2, 0);
+                System.out.println((n.l-1) + " " + n.c + " & " +n.l2 + " " +n.c2 + " (caisse non bougé)");
+            }
+            if((n.c+1)<colonnes && (copieSansCaisseEtPousseur.estOccupable(n.l, n.c+ 1)  || copieSansCaisseEtPousseur.aCaisse(n.l, n.c+1))){
+                ajouteVoisinPousseur(copieSansCaisseEtPousseur, file, n, n.l, n.c + 1, n.l2, n.c2, 1);
+                System.out.println(n.l + " " + (n.c+1) + " & " +n.l2 + " " +n.c2 + " (caisse non bougé)");
+            }
+            if((n.c-1)>=0 && (copieSansCaisseEtPousseur.estOccupable(n.l, n.c - 1)  || copieSansCaisseEtPousseur.aCaisse(n.l, n.c-1))){
+                ajouteVoisinPousseur(copieSansCaisseEtPousseur, file, n, n.l, n.c - 1, n.l2, n.c2, 3);
+                System.out.println(n.l + " " + (n.c-1) + " & " +n.l2 + " " +n.c2 + " (caisse non bougé)");
+            }
+            System.out.println();
         }
 
         if (objectif == null)
             return null;
 
-        Sequence<Coup> chemin = Configuration.nouvelleSequence();
-
-        while (objectif.prec != null) {
-
-            int dL = objectif.l - objectif.prec.l;
-            int dC = objectif.c - objectif.prec.c;
-
-            Coup cp = copie.elaboreCoup(dL, dC); // ⚠️ НЕ deplace()
-
-            if (cp != null)
-                chemin.insereTete(cp);
-
-            objectif = objectif.prec;
-        }
+        ajouterDeplacementsTrouvesPousseur(copie, objectif.prec, objectif, chemin);
 
         return chemin;
     }
-    void ajouteVoisinPousseur(Niveau copie, FAPListe<Noeud> f, Noeud parent, int l, int c) {
+    void ajouteVoisinPousseur(Niveau copie, FAPListe<Noeud2> f, Noeud2 parent, int l, int c, int l2, int c2, int dir) {
         if (l < 0 || c < 0)
             return;
 
         if (l >= lignes || c >= colonnes)
             return;
-
-        // pousseur ne peut pas traverser caisse
-        if (!copie.aMur(l, c) && !copie.aCaisse(l, c)) {
-            f.insere(new Noeud(l, c, parent));
+        
+        switch(dir){
+            case 0:
+                if(l==l2 && (!copie.estOccupable(l2-1, c2) || l2<1)) return;
+                else{
+                    if(l==l2 && c==c2){
+                        f.insere(new Noeud2(l, c, l2-1, c2, parent));
+                        System.out.print(l +" "+ c + " & " + (l2-1) + " " + c2 + ";  ");
+                        return;
+                    }
+                }
+                break;
+            case 1:
+                if( l==l2 && (!copie.estOccupable(l2, c2+1) || c2>=colonnes-1)) return;
+                else{
+                    if(l==l2 && c==c2){
+                        f.insere(new Noeud2(l, c, l2, c2+1, parent));
+                        System.out.print(l +" "+ c + " & " + (l2) + " " + (c2+1) + ";  ");
+                        return;
+                    }
+                }
+                break;
+            case 2:
+                if(l==l2 && (!copie.estOccupable(l2+1, c2) || l2>=lignes-1)) return;
+                else{
+                    if(l==l2 && c==c2){
+                        f.insere(new Noeud2(l, c, l2+1, c2, parent));
+                        System.out.print(l +" "+ c + " & " + (l2+1) + " " + c2 + ";  ");
+                        return;
+                    }
+                }
+                break;
+            case 3:
+                if(c==c2 && (!copie.estOccupable(l2, c2-1) || c2<1)) return;
+                else{
+                    if(l==l2 && c==c2){
+                        f.insere(new Noeud2(l, c, l2, c2-1, parent));
+                        System.out.print(l +" "+ c + " & " + (l2) + " " + (c2-1) + ";  ");
+                        return;
+                    }
+                }
+                break;
         }
+        System.out.print(l +" "+ c + " & " + (l2) + " " + c2 + ";  ");
+        f.insere(new Noeud2(l, c, l2, c2, parent));
     }
 }
