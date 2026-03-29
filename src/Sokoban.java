@@ -43,7 +43,7 @@ public class Sokoban {
 		if (args.length > 0)
 			in = Configuration.ouvre("Niveaux/" + args[0] + ".txt");
 		else
-			in = Configuration.ouvre("Niveaux/mini.txt");
+			in = Configuration.ouvre("Niveaux/mini2.txt");
 		Configuration.info("Niveaux trouvés");
 
 		LecteurNiveaux l = new LecteurNiveaux(in);
