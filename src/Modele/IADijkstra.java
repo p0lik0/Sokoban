@@ -144,7 +144,7 @@ public class IADijkstra extends IA {
         int dC = cibleCaisseC - startConfig.caisseC ;
         int ciblePousseurL = startConfig.caisseL-dL;
         int ciblePousseurC = startConfig.caisseC-dC;
-
+        if(!copieSansCaisseEtPousseur.estOccupable(ciblePousseurL, ciblePousseurC)) return null;
 
         while (!fileCheminPousseur.estVide()) {
 
