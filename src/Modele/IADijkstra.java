@@ -3,36 +3,39 @@ package Modele;
 import Global.Configuration;
 import Structures.Sequence;
 import Structures.FAPListe;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class IADijkstra extends IA {
 
-    int butL, butC;
-    int caisseL, caisseC;
-    Niveau copieSansCaisseEtPousseur;
+    int buts[][];
+    int caisses[][];
+    int nb_caisses;
     Niveau copie;
     int lignes, colonnes;
+    int nb_comb_but_caisse = 0;
 
     IADijkstra(){
-        butL = -1;
-        butC = -1;
-        caisseL = -1;
-        caisseC = -1;
+        buts = null;
+        caisses = null;
     }
 
     class Noeud implements Comparable<Noeud> {
-        int caisseL, caisseC;
+        int caisses[][];
+        int icb;
         int pousseurL, pousseurC;
         int distance;
         Noeud prec;
 
-        Noeud(int caisseL, int caisseC, int pousseurL, int pousseurC, Noeud p, int butL, int butC) {
-            this.caisseL = caisseL;
-            this.caisseC = caisseC;
+        Noeud(int icb, int caisses[][], int pousseurL, int pousseurC, Noeud p, int butL, int butC) {
+            this.caisses = caisses;
+            this.icb = icb;
             this.prec = p;
             this.pousseurL = pousseurL;
             this.pousseurC = pousseurC;
-            distance = Math.abs(butL-caisseL)+Math.abs(butC-caisseC);
+            distance = Math.abs(butL-caisses[icb][0])+Math.abs(butC-caisses[icb][1]);
         }
         @Override
         public int compareTo(Noeud n) {
@@ -40,8 +43,8 @@ public class IADijkstra extends IA {
         }
         @Override
         public String toString() {
-            if(prec==null) return  "null   ->   C(" + caisseL + ", " + caisseC + ")   P(" + pousseurL + ", " + pousseurC + ")";
-            else return  " C(" + prec.caisseL + "," + prec.caisseC + ")   P(" + prec.pousseurL + "," + prec.pousseurC + ")   ->   C(" + caisseL + ", " + caisseC + ")   P(" + pousseurL + ", " + pousseurC + ")";
+            if(prec==null) return  "null   ->   C(" + caisses[icb][0] + ", " + caisses[icb][1] + ")   P(" + pousseurL + ", " + pousseurC + ")";
+            else return  " C(" + prec.caisses[icb][0] + "," + prec.caisses[icb][1] + ")   P(" + prec.pousseurL + "," + prec.pousseurC + ")   ->   C(" + caisses[icb][0] + ", " + caisses[icb][1] + ")   P(" + pousseurL + ", " + pousseurC + ")";
         }
     }
 
@@ -50,110 +53,159 @@ public class IADijkstra extends IA {
         lignes = niveau.lignes();
         colonnes = niveau.colonnes();
 
-        // chercher caisse et but
+        // chercher caisses et buts
+        List<int[]> caissesDin = new ArrayList<>();
+        List<int[]> butsDin = new ArrayList<>();
+
         for (int i = 0; i < lignes; i++) {
             for (int j = 0; j < colonnes; j++) {
-
                 if (niveau.aCaisse(i, j)) {
-                    caisseL = i;
-                    caisseC = j;
+                    // Syntaxe correcte : new int[]{valeur1, valeur2}
+                    caissesDin.add(new int[]{i, j});
                 }
-
                 if (niveau.aBut(i, j)) {
-                    butL = i;
-                    butC = j;
+                    butsDin.add(new int[]{i, j});
                 }
             }
         }
-        copieSansCaisseEtPousseur = niveau.clone();
-        copieSansCaisseEtPousseur.videCase(niveau.lignePousseur(), niveau.colonnePousseur());
-        copieSansCaisseEtPousseur.videCase(caisseL, caisseC);
 
-        FAPListe<Noeud> file = new FAPListe<>();
-        file.insere(new Noeud(caisseL, caisseC,niveau.lignePousseur(), niveau.colonnePousseur(), null, butL, butC));
-        Noeud objectif = null;
-        // boolean[][] visites = new boolean[lignes][colonnes];
+        if(caissesDin.size()!=butsDin.size()) return null;
 
-        while (!file.estVide()) {
-            Noeud n = file.extrait();
-            // System.out.println("Extrait : C("+n.caisseL+","+n.caisseC+")   P("+n.pousseurL+","+n.pousseurC+")");
+        nb_caisses = caissesDin.size();
+        caisses = new int[nb_caisses][2];
+        buts = new int[nb_caisses][2];
 
-            if (n.caisseL == butL && n.caisseC == butC) {
-                System.out.println("On a trouvé un chemin !");
-                objectif = n;
-                // System.out.println("objectif : "+ n.l + " " + n.c);
-                Sequence<Coup> resultat = Configuration.nouvelleSequence();
+        for (int i = 0; i < nb_caisses; i++) {
+            int coordsC[] = caissesDin.get(i);
+            caisses[i]= coordsC;
+            int coordsB[] = butsDin.get(i);
+            buts[i]= coordsB;
+        }
 
-                while (objectif.prec != null) {
-                    Coup push = new Coup();
-                    if((objectif.prec.pousseurL-objectif.pousseurL)!=0 || (objectif.prec.pousseurC-objectif.pousseurC)!=0)
-                        push.deplacementPousseur( objectif.prec.pousseurL,  objectif.prec.pousseurC, objectif.pousseurL, objectif.pousseurC);
-                    if((objectif.prec.caisseL-objectif.caisseL)!=0 || (objectif.prec.caisseC-objectif.caisseC)!=0)
-                        push.deplacementCaisse(objectif.prec.caisseL, objectif.prec.caisseC, objectif.caisseL, objectif.caisseC);
-                    System.out.println("pousseur : " + push.pousseur + "   caisse : "+ push.caisse);
-                    resultat.insereTete(push);
+        int nb_comb_but_caisse = (int)factorielle(nb_caisses);
+        // int toutes_comb_but_caisse[nb_comb_but_caisse][nb_caisses][2] = calcule_permutation(buts);
+        int toutes_comb_but_caisse[][][]= calcule_permutation(buts);
 
-                    objectif = objectif.prec;
-                }
-                return resultat;
+
+        for(int comb_but_caisse=0; comb_but_caisse<nb_comb_but_caisse; comb_but_caisse++){ // pour chaque combinaison possible de caisses avec des buts
+            FAPListe<Noeud> file = new FAPListe<>();
+            for(int i=0; i<nb_caisses; i++){
+                file.insere(new Noeud(i, caisses, niveau.lignePousseur(), niveau.colonnePousseur(), null, toutes_comb_but_caisse[comb_but_caisse][i][0], toutes_comb_but_caisse[comb_but_caisse][i][1]));
             }
-            // System.out.println("On traite : ("+n.caisseL+","+n.caisseC+")");
+            boolean caisse_range[] = new boolean[nb_caisses];
 
-            // System.out.print("Ajoutés : ");
-            ajouteDeplacementCaisse(file, n, n.caisseL + 1, n.caisseC);
-            System.out.print("bas : ");
-            System.out.println(file);
-            ajouteDeplacementCaisse(file, n, n.caisseL - 1, n.caisseC);
-            System.out.print("haut : ");
-            System.out.println(file);
-            ajouteDeplacementCaisse(file, n, n.caisseL, n.caisseC+1);
-            System.out.print("droite : ");
-            System.out.println(file);
-            ajouteDeplacementCaisse(file, n, n.caisseL, n.caisseC-1);
-            System.out.print("gauche : ");
-            System.out.println(file);
+            Noeud objectif = null;
+            // boolean[][] visites = new boolean[lignes][colonnes];
 
-        // try {
-        //     TimeUnit.SECONDS.sleep(1); // Sleep for 1 second
-        // } catch (InterruptedException e) {
-        //     System.out.println("Thread was interrupted: " + e.getMessage());
-        // }        
+            while (!file.estVide()) {
+                Noeud n = file.extrait();
+                // System.out.println("Extrait : C("+n.caisseL+","+n.caisseC+")   P("+n.pousseurL+","+n.pousseurC+")");
+
+                if (n.caisses[n.icb][0]==buts[n.icb][0] && n.caisses[n.icb][1]==buts[n.icb][1]) {
+                    System.out.println("On a trouvé un chemin pour une caisse!");
+                    caisse_range[n.icb] = true;
+                    if(!toutesRangees(caisse_range)){
+                        continue;
+                    }
+
+                    objectif = n;
+                    // System.out.println("objectif : "+ n.l + " " + n.c);
+                    Sequence<Coup> resultat = Configuration.nouvelleSequence();
+
+                    while (objectif.prec != null) {
+                        Coup push = new Coup();
+                        if((objectif.prec.pousseurL-objectif.pousseurL)!=0 || (objectif.prec.pousseurC-objectif.pousseurC)!=0)
+                            push.deplacementPousseur( objectif.prec.pousseurL,  objectif.prec.pousseurC, objectif.pousseurL, objectif.pousseurC);
+
+                        if((objectif.prec.caisses[objectif.icb][0]-objectif.prec.caisses[objectif.icb][0])!=0 
+                        || (objectif.prec.caisses[objectif.icb][1]-objectif.caisses[objectif.icb][1])!=0)
+                            push.deplacementCaisse(objectif.prec.caisses[objectif.prec.icb][0], objectif.prec.caisses[objectif.prec.icb][1], objectif.caisses[objectif.icb][0], objectif.caisses[objectif.icb][1]);
+                        
+                            if((objectif.prec.pousseurL-objectif.pousseurL)!=0 || (objectif.prec.pousseurC-objectif.pousseurC)!=0
+                            || (objectif.prec.caisses[objectif.icb][0]-objectif.prec.caisses[objectif.icb][0])!=0 
+                        || (objectif.prec.caisses[objectif.icb][1]-objectif.caisses[objectif.icb][1])!=0){
+                            resultat.insereTete(push);
+                            System.out.println("pousseur : " + push.pousseur + "   caisse : "+ push.caisse);
+                        }
+                        objectif = objectif.prec;
+                    }
+                    return resultat;
+                }
+                // System.out.println("On traite : ("+n.caisseL+","+n.caisseC+")");
+
+                for(int i=0; i<nb_caisses; i++){
+                    if(!caisse_range[i]){
+                        ajouteDeplacementCaisse(file, n, n.caisses[i][0] + 1, n.caisses[i][1], i);
+                        // System.out.print("bas : ");
+                        // System.out.println(file);
+                        ajouteDeplacementCaisse(file, n, n.caisses[i][0] - 1, n.caisses[i][1], i);
+                        // System.out.print("haut : ");
+                        // System.out.println(file);
+                        ajouteDeplacementCaisse(file, n, n.caisses[i][0], n.caisses[i][1]+1, i);
+                        // System.out.print("droite : ");
+                        // System.out.println(file);
+                        ajouteDeplacementCaisse(file, n, n.caisses[i][0], n.caisses[i][1]-1, i);
+                        // System.out.print("gauche : ");
+                        // System.out.println(file);
+                    }
+                }
+                
+
+            // try {
+            //     TimeUnit.SECONDS.sleep(1); // Sleep for 1 second
+            // } catch (InterruptedException e) {
+            //     System.out.println("Thread was interrupted: " + e.getMessage());
+            // }        
+            }
         }
         return Configuration.nouvelleSequence();
     }
 
-    void ajouteDeplacementCaisse(FAPListe<Noeud> f, Noeud parent, int l, int c) {
+    boolean toutesRangees(boolean c[]){
+        for(int i=0; i<c.length; i++){
+            if(c[i]==false) return false;
+        }
+        return true;
+    }
+
+    void ajouteDeplacementCaisse(FAPListe<Noeud> f, Noeud parent, int l, int c, int i) {
         if (l < 0 || c < 0 || l >= lignes || c >= colonnes)
             return;
-        if (!copieSansCaisseEtPousseur.estOccupable(l, c) && !copieSansCaisseEtPousseur.aBut(l, c)) {
+        if (niveau.aMur(l, c)) {
             return;
         }
-        if(l==parent.pousseurL+1 &&  c==parent.pousseurC || 
-            l==parent.pousseurL-1 &&  c==parent.pousseurC ||
-            l==parent.pousseurL && c==parent.pousseurC+1 ||
-            l==parent.pousseurL && c==parent.pousseurC-1){
-            f.insere(new Noeud(l, c, parent.caisseL, parent.caisseC, parent, butL, butC));
+        for(int j=0; j<nb_caisses; j++){
+            if(j!=i && l==parent.caisses[j][0] && c==parent.caisses[j][1]) return;
         }
-        else {
-            Noeud finCheminPousseur = chercheCheminPousseur(f, parent, l, c);
+        // if(l==parent.pousseurL+1 && c==parent.pousseurC || 
+        //     l==parent.pousseurL-1 && c==parent.pousseurC ||
+        //     l==parent.pousseurL && c==parent.pousseurC+1 ||
+        //     l==parent.pousseurL && c==parent.pousseurC-1){
+        //     f.insere(new Noeud(l, c, parent.caisseL, parent.caisseC, parent, butL, butC));
+        // }
+        // else {
+            Noeud finCheminPousseur = chercheCheminPousseur(f, parent, l, c, i);
             if (finCheminPousseur != null) {
-                f.insere(new Noeud(l, c, parent.caisseL, parent.caisseC, finCheminPousseur, butL, butC));
+                int new_caisses[][] = parent.caisses.clone();
+                new_caisses[i][0] = l;
+                new_caisses[i][1] = c;
+                f.insere(new Noeud(i, new_caisses, parent.caisses[i][0], parent.caisses[i][1], finCheminPousseur, buts[i][0], buts[i][1]));
             }
-        }
+        // }
     }
     
-    Noeud chercheCheminPousseur(FAPListe<Noeud> f, Noeud startConfig, int cibleCaisseL, int cibleCaisseC){
+    Noeud chercheCheminPousseur(FAPListe<Noeud> f, Noeud startConfig, int cibleCaisseL, int cibleCaisseC, int i){
         boolean[][] visite = new boolean[lignes][colonnes];
         FAPListe<Noeud> fileCheminPousseur = new FAPListe<>();
-        int dL = cibleCaisseL - startConfig.caisseL ;
-        int dC = cibleCaisseC - startConfig.caisseC ;
-        int ciblePousseurL = startConfig.caisseL-dL;
-        int ciblePousseurC = startConfig.caisseC-dC;
+        int dL = cibleCaisseL - startConfig.caisses[i][0] ;
+        int dC = cibleCaisseC - startConfig.caisses[i][1] ;
+        int ciblePousseurL = startConfig.caisses[i][0]-dL;
+        int ciblePousseurC = startConfig.caisses[i][1]-dC;
 
-        fileCheminPousseur.insere(new Noeud(startConfig.caisseL, startConfig.caisseC, startConfig.pousseurL, startConfig.pousseurC, null, ciblePousseurL, ciblePousseurC));
+        fileCheminPousseur.insere(new Noeud(-1, startConfig.caisses, startConfig.pousseurL, startConfig.pousseurC, null, ciblePousseurL, ciblePousseurC));
 
         Noeud objectif = null;
-        if(!copieSansCaisseEtPousseur.estOccupable(ciblePousseurL, ciblePousseurC)) return null;
+        if(niveau.aMur(ciblePousseurL, ciblePousseurC)) return null;
 
         while (!fileCheminPousseur.estVide()) {
 
@@ -170,7 +222,12 @@ public class IADijkstra extends IA {
                 // System.out.println("ciblePousseurL : "+ciblePousseurL);
                 // System.out.println("ciblePousseurC : "+ciblePousseurC);
                 objectif = n;
-
+                if(objectif.prec == null){
+                    n.caisses[i][0]=cibleCaisseL;
+                    n.caisses[i][1]=cibleCaisseC;
+                    f.insere(new Noeud(-1, n.caisses, startConfig.caisses[i][0], startConfig.caisses[i][1], startConfig, buts[i][0], buts[i][1]));
+                    return null;
+                }
                 while (objectif.prec != null) {
                     objectif = objectif.prec ;
                 }
@@ -178,25 +235,72 @@ public class IADijkstra extends IA {
                 return n;
             }
 
-            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL + 1, n.pousseurC, ciblePousseurL, ciblePousseurC);
-            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL - 1, n.pousseurC, ciblePousseurL, ciblePousseurC);
-            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL, n.pousseurC + 1, ciblePousseurL, ciblePousseurC);
-            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL, n.pousseurC - 1, ciblePousseurL, ciblePousseurC);
+            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL + 1, n.pousseurC, ciblePousseurL, ciblePousseurC, i);
+            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL - 1, n.pousseurC, ciblePousseurL, ciblePousseurC, i);
+            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL, n.pousseurC + 1, ciblePousseurL, ciblePousseurC, i);
+            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL, n.pousseurC - 1, ciblePousseurL, ciblePousseurC, i);
         }
 
         System.out.println("On n a pas trouve de chemin pour pousseur vers ("+ ciblePousseurL +","+ ciblePousseurC+") !!!");
         return null;
     }
 
-    void ajouteVoisinPousseur(FAPListe<Noeud> f, Noeud parent, int l, int c, int ciblePousseurL, int ciblePousseurC) {
+    void ajouteVoisinPousseur(FAPListe<Noeud> f, Noeud parent, int l, int c, int ciblePousseurL, int ciblePousseurC, int i) {
 
         if (l < 0 || c < 0) return;
         if (l >= lignes || c >= colonnes) return;
 
-        if ((l == parent.caisseL && c == parent.caisseC) || copieSansCaisseEtPousseur.aMur(l, c)) {
+        if (niveau.aMur(l, c)) {
             return;
         }
+        for(int j=0; j<nb_caisses; j++){
+            if(j!=i && l==parent.caisses[j][0] && c==parent.caisses[j][1]) return;
+        }
 
-        f.insere(new Noeud(parent.caisseL, parent.caisseC,l,c, parent, ciblePousseurL, ciblePousseurC));
+        f.insere(new Noeud(i, parent.caisses,l,c, parent, ciblePousseurL, ciblePousseurC));
     }
+
+    public int[][][] calcule_permutation(int[][] tabBut) {
+        int n = tabBut.length;
+        int nbPerm = (int) factorielle(n);
+        
+        // Initialisation : [combinaisons][nombre de buts][2 coordonnées]
+        int[][][] res = new int[nbPerm][n][2];
+
+        this.nb_comb_but_caisse = 0;
+        // .clone() sur un tableau 2D ne copie que la première couche, 
+        // mais pour l'algo de Heap, c'est suffisant ici.
+        generer(n, tabBut.clone(), res);
+
+        return res;
+    }
+
+    private void generer(int n, int[][] buts, int[][][] res) {
+        if (n == 1) {
+            for (int j = 0; j < buts.length; j++) {
+                // On remplit la 3ème dimension
+                res[nb_comb_but_caisse][j][0] = buts[j][0];
+                res[nb_comb_but_caisse][j][1] = buts[j][1];
+            }
+            nb_comb_but_caisse++;
+        } else {
+            for (int i = 0; i < n; i++) {
+                generer(n - 1, buts, res);
+                echanger(buts, (n % 2 == 0) ? i : 0, n - 1);
+            }
+        }
+    }
+
+    private void echanger(int[][] t, int i, int j) {
+        int[] temp = t[i];
+        t[i] = t[j];
+        t[j] = temp;
+    }
+
+    public long factorielle(int n) {
+        long res = 1;
+        for (int i = 2; i <= n; i++) res *= i;
+        return res;
+    }
+
 }
