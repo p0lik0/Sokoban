@@ -3,6 +3,7 @@ package Modele;
 import Global.Configuration;
 import Structures.Sequence;
 import Structures.FAPListe;
+import java.util.concurrent.TimeUnit;
 
 public class IADijkstra extends IA {
 
@@ -25,23 +26,17 @@ public class IADijkstra extends IA {
         int distance;
         Noeud prec;
 
-        Noeud(int caisseL, int caisseC, int pousseurL, int pousseurC, Noeud p) {
+        Noeud(int caisseL, int caisseC, int pousseurL, int pousseurC, Noeud p, int butL, int butC) {
             this.caisseL = caisseL;
             this.caisseC = caisseC;
             this.prec = p;
             this.pousseurL = pousseurL;
             this.pousseurC = pousseurC;
-            // distance = 1;
-
-            if (p == null)
-                distance = 0;
-            else
-                distance = p.distance + 1;
+            distance = Math.abs(butL-caisseL)+Math.abs(butC-caisseC);
         }
         @Override
         public int compareTo(Noeud n) {
-            // return this.distance - n.distance;
-            return 1;
+            return this.distance - n.distance ;
         }
         @Override
         public String toString() {
@@ -75,7 +70,7 @@ public class IADijkstra extends IA {
         copieSansCaisseEtPousseur.videCase(caisseL, caisseC);
 
         FAPListe<Noeud> file = new FAPListe<>();
-        file.insere(new Noeud(caisseL, caisseC,niveau.lignePousseur(), niveau.colonnePousseur(), null));
+        file.insere(new Noeud(caisseL, caisseC,niveau.lignePousseur(), niveau.colonnePousseur(), null, butL, butC));
         Noeud objectif = null;
         // boolean[][] visites = new boolean[lignes][colonnes];
 
@@ -106,9 +101,23 @@ public class IADijkstra extends IA {
 
             // System.out.print("Ajoutés : ");
             ajouteDeplacementCaisse(file, n, n.caisseL + 1, n.caisseC);
+            System.out.print("bas : ");
+            System.out.println(file);
             ajouteDeplacementCaisse(file, n, n.caisseL - 1, n.caisseC);
+            System.out.print("haut : ");
+            System.out.println(file);
             ajouteDeplacementCaisse(file, n, n.caisseL, n.caisseC+1);
+            System.out.print("droite : ");
+            System.out.println(file);
             ajouteDeplacementCaisse(file, n, n.caisseL, n.caisseC-1);
+            System.out.print("gauche : ");
+            System.out.println(file);
+
+        // try {
+        //     TimeUnit.SECONDS.sleep(1); // Sleep for 1 second
+        // } catch (InterruptedException e) {
+        //     System.out.println("Thread was interrupted: " + e.getMessage());
+        // }        
         }
         return Configuration.nouvelleSequence();
     }
@@ -123,12 +132,12 @@ public class IADijkstra extends IA {
             l==parent.pousseurL-1 &&  c==parent.pousseurC ||
             l==parent.pousseurL && c==parent.pousseurC+1 ||
             l==parent.pousseurL && c==parent.pousseurC-1){
-            f.insere(new Noeud(l, c, parent.caisseL, parent.caisseC, parent));
+            f.insere(new Noeud(l, c, parent.caisseL, parent.caisseC, parent, butL, butC));
         }
         else {
             Noeud finCheminPousseur = chercheCheminPousseur(f, parent, l, c);
             if (finCheminPousseur != null) {
-                f.insere(new Noeud(l, c, parent.caisseL, parent.caisseC, finCheminPousseur));
+                f.insere(new Noeud(l, c, parent.caisseL, parent.caisseC, finCheminPousseur, butL, butC));
             }
         }
     }
@@ -136,14 +145,14 @@ public class IADijkstra extends IA {
     Noeud chercheCheminPousseur(FAPListe<Noeud> f, Noeud startConfig, int cibleCaisseL, int cibleCaisseC){
         boolean[][] visite = new boolean[lignes][colonnes];
         FAPListe<Noeud> fileCheminPousseur = new FAPListe<>();
-
-        fileCheminPousseur.insere(new Noeud(startConfig.caisseL, startConfig.caisseC, startConfig.pousseurL, startConfig.pousseurC, null));
-
-        Noeud objectif = null;
         int dL = cibleCaisseL - startConfig.caisseL ;
         int dC = cibleCaisseC - startConfig.caisseC ;
         int ciblePousseurL = startConfig.caisseL-dL;
         int ciblePousseurC = startConfig.caisseC-dC;
+
+        fileCheminPousseur.insere(new Noeud(startConfig.caisseL, startConfig.caisseC, startConfig.pousseurL, startConfig.pousseurC, null, ciblePousseurL, ciblePousseurC));
+
+        Noeud objectif = null;
         if(!copieSansCaisseEtPousseur.estOccupable(ciblePousseurL, ciblePousseurC)) return null;
 
         while (!fileCheminPousseur.estVide()) {
@@ -169,17 +178,17 @@ public class IADijkstra extends IA {
                 return n;
             }
 
-            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL + 1, n.pousseurC);
-            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL - 1, n.pousseurC);
-            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL, n.pousseurC + 1);
-            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL, n.pousseurC - 1);
+            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL + 1, n.pousseurC, ciblePousseurL, ciblePousseurC);
+            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL - 1, n.pousseurC, ciblePousseurL, ciblePousseurC);
+            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL, n.pousseurC + 1, ciblePousseurL, ciblePousseurC);
+            ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL, n.pousseurC - 1, ciblePousseurL, ciblePousseurC);
         }
 
         System.out.println("On n a pas trouve de chemin pour pousseur vers ("+ ciblePousseurL +","+ ciblePousseurC+") !!!");
         return null;
     }
 
-    void ajouteVoisinPousseur(FAPListe<Noeud> f, Noeud parent, int l, int c) {
+    void ajouteVoisinPousseur(FAPListe<Noeud> f, Noeud parent, int l, int c, int ciblePousseurL, int ciblePousseurC) {
 
         if (l < 0 || c < 0) return;
         if (l >= lignes || c >= colonnes) return;
@@ -188,6 +197,6 @@ public class IADijkstra extends IA {
             return;
         }
 
-        f.insere(new Noeud(parent.caisseL, parent.caisseC,l,c, parent));
+        f.insere(new Noeud(parent.caisseL, parent.caisseC,l,c, parent, ciblePousseurL, ciblePousseurC));
     }
 }

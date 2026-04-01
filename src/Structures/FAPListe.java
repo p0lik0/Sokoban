@@ -54,4 +54,13 @@ public class FAPListe<E extends Comparable<E>> extends FAP<E> {
 		if (courant == null)
 			s.queue = m;
 	}
+	public String toString() {
+		String str = "";
+		Maillon<E> c = s.tete;
+		while(c!=null){
+			str +=( c.element + ";  ");
+			c = c.suivant;
+		}
+		return str;
+	}
 }
