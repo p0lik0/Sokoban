@@ -91,8 +91,10 @@ public class IADijkstra extends IA {
 
                 while (objectif.prec != null) {
                     Coup push = new Coup();
-                    push.deplacementPousseur( objectif.prec.pousseurL,  objectif.prec.pousseurC, objectif.pousseurL, objectif.pousseurC);
-                    push.deplacementCaisse(objectif.prec.caisseL, objectif.prec.caisseC, objectif.caisseL, objectif.caisseC);
+                    if((objectif.prec.pousseurL-objectif.pousseurL)!=0 || (objectif.prec.pousseurC-objectif.pousseurC)!=0)
+                        push.deplacementPousseur( objectif.prec.pousseurL,  objectif.prec.pousseurC, objectif.pousseurL, objectif.pousseurC);
+                    if((objectif.prec.caisseL-objectif.caisseL)!=0 || (objectif.prec.caisseC-objectif.caisseC)!=0)
+                        push.deplacementCaisse(objectif.prec.caisseL, objectif.prec.caisseC, objectif.caisseL, objectif.caisseC);
                     System.out.println("pousseur : " + push.pousseur + "   caisse : "+ push.caisse);
                     resultat.insereTete(push);
 
@@ -124,14 +126,14 @@ public class IADijkstra extends IA {
             f.insere(new Noeud(l, c, parent.caisseL, parent.caisseC, parent));
         }
         else {
-            Noeud finCheminPousseur = null;
-            if(chercheCheminPousseur(f, parent, l, c, finCheminPousseur)){
-                f.insere(new Noeud(l, c, parent.caisseL, parent.caisseC, parent));
+            Noeud finCheminPousseur = chercheCheminPousseur(f, parent, l, c);
+            if (finCheminPousseur != null) {
+                f.insere(new Noeud(l, c, parent.caisseL, parent.caisseC, finCheminPousseur));
             }
         }
     }
     
-    boolean chercheCheminPousseur(FAPListe<Noeud> f, Noeud startConfig, int cibleCaisseL, int cibleCaisseC, Noeud finCheminPousseur){
+    Noeud chercheCheminPousseur(FAPListe<Noeud> f, Noeud startConfig, int cibleCaisseL, int cibleCaisseC){
         boolean[][] visite = new boolean[lignes][colonnes];
         FAPListe<Noeud> fileCheminPousseur = new FAPListe<>();
 
@@ -164,7 +166,7 @@ public class IADijkstra extends IA {
                     objectif = objectif.prec ;
                 }
                 objectif.prec = startConfig;
-                return true;
+                return n;
             }
 
             ajouteVoisinPousseur(fileCheminPousseur, n, n.pousseurL + 1, n.pousseurC);
@@ -174,19 +176,8 @@ public class IADijkstra extends IA {
         }
 
         System.out.println("On n a pas trouve de chemin pour pousseur vers ("+ ciblePousseurL +","+ ciblePousseurC+") !!!");
-        return false;
+        return null;
     }
-
-// void ramasseLaChaineDesDeplacements(Noeud startChemin, Noeud from, Noeud to, FAPListe<Noeud> f){
-//     if(from.prec != null){
-//         ramasseLaChaineDesDeplacements(startChemin, from.prec, from, f);
-//     } else {
-//         from = startChemin; // from est la racine, on le rattache
-//     }
-//     // Maintenant from.prec est correct, on peut lier to → from
-//     to.prec = from;
-//     f.insere(to);
-// }
 
     void ajouteVoisinPousseur(FAPListe<Noeud> f, Noeud parent, int l, int c) {
 
