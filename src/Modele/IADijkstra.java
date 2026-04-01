@@ -29,13 +29,13 @@ public class IADijkstra extends IA {
         int distance;
         Noeud prec;
 
-        Noeud(int icb, int caisses[][], int pousseurL, int pousseurC, Noeud p, int butL, int butC) {
+        Noeud(int icb, int caisses[][], int pousseurL, int pousseurC, Noeud p, int butL, int butC, int l,int c) {
             this.caisses = caisses;
             this.icb = icb;
             this.prec = p;
             this.pousseurL = pousseurL;
             this.pousseurC = pousseurC;
-            distance = Math.abs(butL-caisses[icb][0])+Math.abs(butC-caisses[icb][1]);
+            distance = Math.abs(butL-l)+Math.abs(butC-c);
         }
         @Override
         public int compareTo(Noeud n) {
@@ -90,7 +90,7 @@ public class IADijkstra extends IA {
         for(int comb_but_caisse=0; comb_but_caisse<nb_comb_but_caisse; comb_but_caisse++){ // pour chaque combinaison possible de caisses avec des buts
             FAPListe<Noeud> file = new FAPListe<>();
             for(int i=0; i<nb_caisses; i++){
-                file.insere(new Noeud(i, caisses, niveau.lignePousseur(), niveau.colonnePousseur(), null, toutes_comb_but_caisse[comb_but_caisse][i][0], toutes_comb_but_caisse[comb_but_caisse][i][1]));
+                file.insere(new Noeud(i, caisses, niveau.lignePousseur(), niveau.colonnePousseur(), null, toutes_comb_but_caisse[comb_but_caisse][i][0], toutes_comb_but_caisse[comb_but_caisse][i][1], caisses[i][0], caisses[i][1]));
             }
             boolean caisse_range[] = new boolean[nb_caisses];
 
@@ -136,26 +136,26 @@ public class IADijkstra extends IA {
                 for(int i=0; i<nb_caisses; i++){
                     if(!caisse_range[i]){
                         ajouteDeplacementCaisse(file, n, n.caisses[i][0] + 1, n.caisses[i][1], i);
-                        // System.out.print("bas : ");
-                        // System.out.println(file);
+                        System.out.print("bas : ");
+                        System.out.println(file);
                         ajouteDeplacementCaisse(file, n, n.caisses[i][0] - 1, n.caisses[i][1], i);
-                        // System.out.print("haut : ");
-                        // System.out.println(file);
+                        System.out.print("haut : ");
+                        System.out.println(file);
                         ajouteDeplacementCaisse(file, n, n.caisses[i][0], n.caisses[i][1]+1, i);
-                        // System.out.print("droite : ");
-                        // System.out.println(file);
+                        System.out.print("droite : ");
+                        System.out.println(file);
                         ajouteDeplacementCaisse(file, n, n.caisses[i][0], n.caisses[i][1]-1, i);
-                        // System.out.print("gauche : ");
-                        // System.out.println(file);
+                        System.out.print("gauche : ");
+                        System.out.println(file);
                     }
                 }
                 
 
-            // try {
-            //     TimeUnit.SECONDS.sleep(1); // Sleep for 1 second
-            // } catch (InterruptedException e) {
-            //     System.out.println("Thread was interrupted: " + e.getMessage());
-            // }        
+            try {
+                TimeUnit.SECONDS.sleep(1); // Sleep for 1 second
+            } catch (InterruptedException e) {
+                System.out.println("Thread was interrupted: " + e.getMessage());
+            }        
             }
         }
         return Configuration.nouvelleSequence();
@@ -189,7 +189,7 @@ public class IADijkstra extends IA {
                 int new_caisses[][] = parent.caisses.clone();
                 new_caisses[i][0] = l;
                 new_caisses[i][1] = c;
-                f.insere(new Noeud(i, new_caisses, parent.caisses[i][0], parent.caisses[i][1], finCheminPousseur, buts[i][0], buts[i][1]));
+                f.insere(new Noeud(i, new_caisses, parent.caisses[i][0], parent.caisses[i][1], finCheminPousseur, buts[i][0], buts[i][1], l,c));
             }
         // }
     }
@@ -202,7 +202,7 @@ public class IADijkstra extends IA {
         int ciblePousseurL = startConfig.caisses[i][0]-dL;
         int ciblePousseurC = startConfig.caisses[i][1]-dC;
 
-        fileCheminPousseur.insere(new Noeud(-1, startConfig.caisses, startConfig.pousseurL, startConfig.pousseurC, null, ciblePousseurL, ciblePousseurC));
+        fileCheminPousseur.insere(new Noeud(-1, startConfig.caisses, startConfig.pousseurL, startConfig.pousseurC, null, ciblePousseurL, ciblePousseurC, startConfig.pousseurL, startConfig.pousseurC));
 
         Noeud objectif = null;
         if(niveau.aMur(ciblePousseurL, ciblePousseurC)) return null;
@@ -225,7 +225,7 @@ public class IADijkstra extends IA {
                 if(objectif.prec == null){
                     n.caisses[i][0]=cibleCaisseL;
                     n.caisses[i][1]=cibleCaisseC;
-                    f.insere(new Noeud(-1, n.caisses, startConfig.caisses[i][0], startConfig.caisses[i][1], startConfig, buts[i][0], buts[i][1]));
+                    f.insere(new Noeud(i, n.caisses, startConfig.caisses[i][0], startConfig.caisses[i][1], startConfig, buts[i][0], buts[i][1], cibleCaisseL, cibleCaisseL ));
                     return null;
                 }
                 while (objectif.prec != null) {
@@ -257,7 +257,7 @@ public class IADijkstra extends IA {
             if(j!=i && l==parent.caisses[j][0] && c==parent.caisses[j][1]) return;
         }
 
-        f.insere(new Noeud(i, parent.caisses,l,c, parent, ciblePousseurL, ciblePousseurC));
+        f.insere(new Noeud(i, parent.caisses,l,c, parent, ciblePousseurL, ciblePousseurC, l,c));
     }
 
     public int[][][] calcule_permutation(int[][] tabBut) {
