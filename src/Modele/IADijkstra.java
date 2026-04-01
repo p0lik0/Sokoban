@@ -12,6 +12,7 @@ public class IADijkstra extends IA {
     Niveau copieSansCaisseEtPousseur;
     Niveau copie;
     int lignes, colonnes;
+    private int compteurLigne = 0;
 
     IADijkstra(){
         butL = -1;
@@ -199,4 +200,48 @@ public class IADijkstra extends IA {
 
         f.insere(new Noeud(parent.caisseL, parent.caisseC,l,c, parent, ciblePousseurL, ciblePousseurC));
     }
+
+    public int[][][] calcule_permutation(int[][] tabBut) {
+        int n = tabBut.length;
+        int nbPerm = (int) factorielle(n);
+        
+        // Initialisation : [combinaisons][nombre de buts][2 coordonnées]
+        int[][][] res = new int[nbPerm][n][2];
+
+        this.compteurLigne = 0;
+        // .clone() sur un tableau 2D ne copie que la première couche, 
+        // mais pour l'algo de Heap, c'est suffisant ici.
+        generer(n, tabBut.clone(), res);
+
+        return res;
+    }
+
+    private void generer(int n, int[][] buts, int[][][] res) {
+        if (n == 1) {
+            for (int j = 0; j < buts.length; j++) {
+                // On remplit la 3ème dimension
+                res[compteurLigne][j][0] = buts[j][0];
+                res[compteurLigne][j][1] = buts[j][1];
+            }
+            compteurLigne++;
+        } else {
+            for (int i = 0; i < n; i++) {
+                generer(n - 1, buts, res);
+                echanger(buts, (n % 2 == 0) ? i : 0, n - 1);
+            }
+        }
+    }
+
+    private void echanger(int[][] t, int i, int j) {
+        int[] temp = t[i];
+        t[i] = t[j];
+        t[j] = temp;
+    }
+
+    public long factorielle(int n) {
+        long res = 1;
+        for (int i = 2; i <= n; i++) res *= i;
+        return res;
+    }
+
 }
